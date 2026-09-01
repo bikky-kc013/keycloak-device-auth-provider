@@ -19,6 +19,8 @@ public class Device {
     private String algorithm;
     private Status status;
     private String keyId;
+    private AttestationLevel attestationLevel = AttestationLevel.UNKNOWN;
+    private String attestationStatement;
     private Instant createdAt;
     private Instant lastUsedAt;
     private Instant revokedAt;
@@ -67,6 +69,14 @@ public class Device {
 
     public String getKeyId() { return keyId; }
     public void setKeyId(String keyId) { this.keyId = keyId; }
+
+    public AttestationLevel getAttestationLevel() { return attestationLevel; }
+    public void setAttestationLevel(AttestationLevel attestationLevel) {
+        this.attestationLevel = attestationLevel != null ? attestationLevel : AttestationLevel.UNKNOWN;
+    }
+
+    public String getAttestationStatement() { return attestationStatement; }
+    public void setAttestationStatement(String attestationStatement) { this.attestationStatement = attestationStatement; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
