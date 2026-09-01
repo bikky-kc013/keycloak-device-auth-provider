@@ -8,6 +8,12 @@
                        autocomplete="one-time-code" inputmode="numeric" maxlength="6" />
             </div>
 
+            <#if devOtpHint?has_content>
+                <div class="${properties.kcFormGroupClass!}">
+                    <span>Testing mode — OTP is ${devOtpHint}</span>
+                </div>
+            </#if>
+
             <#if message?has_content>
                 <div class="${properties.kcFormGroupClass!} ${properties.kcFeedbackErrorClass!}">
                     <span>${kcSanitize(message.summary)?no_esc}</span>
