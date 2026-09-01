@@ -11,6 +11,7 @@ public class Challenge {
     private String userId;
     private String deviceId;
     private String clientId;
+    private String purpose;
     private String authenticationSessionId;
     private Instant expiresAt;
     private Instant usedAt;
@@ -19,7 +20,7 @@ public class Challenge {
     }
 
     public Challenge(String challengeId, String challenge, String challengeHash,
-                     String userId, String deviceId, String clientId,
+                     String userId, String deviceId, String clientId, String purpose,
                      String authenticationSessionId, Instant expiresAt) {
         this.challengeId = challengeId;
         this.challenge = challenge;
@@ -27,6 +28,7 @@ public class Challenge {
         this.userId = userId;
         this.deviceId = deviceId;
         this.clientId = clientId;
+        this.purpose = purpose;
         this.authenticationSessionId = authenticationSessionId;
         this.expiresAt = expiresAt;
     }
@@ -48,6 +50,9 @@ public class Challenge {
 
     public String getClientId() { return clientId; }
     public void setClientId(String clientId) { this.clientId = clientId; }
+
+    public String getPurpose() { return purpose; }
+    public void setPurpose(String purpose) { this.purpose = purpose; }
 
     public String getAuthenticationSessionId() { return authenticationSessionId; }
     public void setAuthenticationSessionId(String authenticationSessionId) { this.authenticationSessionId = authenticationSessionId; }
