@@ -1,0 +1,3 @@
+com.example.keycloak.deviceauth.PhoneNumberAuthenticatorFactory
+com.example.keycloak.deviceauth.DevelopmentOtpAuthenticatorFactory
+com.example.keycloak.deviceauth.DeviceChallengeAuthenticatorFactory
