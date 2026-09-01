@@ -318,3 +318,4 @@ String signature = Base64Url.encode(rawSignature);
 ## License
 
 Apache 2.0 - see [LICENSE](LICENSE)
+# keycloak-device-auth-provider
