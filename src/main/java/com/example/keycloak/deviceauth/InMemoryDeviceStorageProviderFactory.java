@@ -11,10 +11,19 @@ public class InMemoryDeviceStorageProviderFactory implements DeviceStorageProvid
 
     public static final String PROVIDER_ID = "in-memory";
 
+    // A fresh KeycloakSession (and hence a fresh call to create()) happens on every single
+    // request. Handing back a new InMemoryDeviceStorageProvider each time would mean every
+    // request sees an empty device store - a device registered in one request would be
+    // invisible in the next. All callers must see the same store, so this factory hands out
+    // one shared instance for the JVM's lifetime instead (InMemoryDeviceStorageProvider.close()
+    // is a no-op, so this is safe - nothing tears the shared state down between requests).
+    // Single-node only, per the README's "Known Limitations" - a real deployment needs a
+    // JPA/Redis-backed DeviceStorageProvider.
+    private static final DeviceStorageProvider SHARED_INSTANCE = new InMemoryDeviceStorageProvider();
+
     @Override
     public DeviceStorageProvider create(KeycloakSession session) {
-        logger.debug("Creating InMemoryDeviceStorageProvider");
-        return new InMemoryDeviceStorageProvider();
+        return SHARED_INSTANCE;
     }
 
     @Override

@@ -55,6 +55,7 @@ public class PhoneNumberAuthenticator implements Authenticator {
             user = session.users().addUser(realm, normalizedPhone);
             user.setEnabled(true);
             user.setSingleAttribute(phoneAttribute, normalizedPhone);
+            user.setSingleAttribute(SewaAttributes.VERIFICATION_LEVEL_ATTRIBUTE, VerificationLevel.CLAIMED.name());
             logger.infov("Auto-created user for phone number");
         }
 

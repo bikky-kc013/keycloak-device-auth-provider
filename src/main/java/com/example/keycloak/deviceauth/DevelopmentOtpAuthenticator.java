@@ -26,7 +26,15 @@ public class DevelopmentOtpAuthenticator implements Authenticator {
 
     @Override
     public void authenticate(AuthenticationFlowContext context) {
-        context.challenge(context.form().createForm("otp-form.ftl"));
+        Map<String, String> config = getConfig(context);
+        boolean devOtpEnabled = Boolean.parseBoolean(config.getOrDefault(DEV_OTP_ENABLED, "true"));
+        String devOtpValue = config.getOrDefault(DEV_OTP_VALUE, "123456");
+
+        var form = context.form();
+        if (devOtpEnabled) {
+            form.setAttribute("devOtpHint", devOtpValue);
+        }
+        context.challenge(form.createForm("otp-form.ftl"));
     }
 
     @Override

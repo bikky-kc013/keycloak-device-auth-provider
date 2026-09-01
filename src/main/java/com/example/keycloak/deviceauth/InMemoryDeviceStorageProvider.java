@@ -12,6 +12,12 @@ public class InMemoryDeviceStorageProvider implements DeviceStorageProvider {
 
     private static final Logger logger = Logger.getLogger(InMemoryDeviceStorageProvider.class);
 
+    // Instance fields are fine here ONLY because InMemoryDeviceStorageProviderFactory hands out
+    // a single shared instance (see its Javadoc) rather than a fresh one per
+    // session.getProvider(DeviceStorageProvider.class) call - a fresh instance per request
+    // would silently lose every device between requests (a device "successfully" registered
+    // in one HTTP request would be invisible to the very next). Tests construct this class
+    // directly and rely on getting an isolated, empty store per instance.
     private final Map<String, Device> devicesById = new ConcurrentHashMap<>();
     private final Map<String, List<String>> devicesByUserId = new ConcurrentHashMap<>();
 

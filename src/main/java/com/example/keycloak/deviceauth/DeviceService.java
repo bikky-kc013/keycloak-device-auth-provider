@@ -6,6 +6,7 @@ import org.keycloak.models.UserModel;
 
 import java.time.Instant;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -15,14 +16,27 @@ public class DeviceService {
 
     private final DeviceStorageProvider deviceStorage;
     private final KeycloakSession session;
+    private final DeviceRebindingNotifier rebindingNotifier;
 
     public DeviceService(DeviceStorageProvider deviceStorage, KeycloakSession session) {
+        this(deviceStorage, session, new LoggingDeviceRebindingNotifier());
+    }
+
+    public DeviceService(DeviceStorageProvider deviceStorage, KeycloakSession session, DeviceRebindingNotifier rebindingNotifier) {
         this.deviceStorage = deviceStorage;
         this.session = session;
+        this.rebindingNotifier = rebindingNotifier;
     }
 
     public Device registerDevice(String userId, String deviceId, String deviceName, String platform,
                                  String publicKeyJwk, String algorithm, String keyId) {
+        return registerDevice(userId, deviceId, deviceName, platform, publicKeyJwk, algorithm, keyId,
+                AttestationLevel.UNKNOWN, null);
+    }
+
+    public Device registerDevice(String userId, String deviceId, String deviceName, String platform,
+                                 String publicKeyJwk, String algorithm, String keyId,
+                                 AttestationLevel attestationLevel, String attestationStatement) {
         if (deviceStorage.hasDeviceWithId(deviceId)) {
             throw new IllegalArgumentException("Device with id " + deviceId + " already exists");
         }
@@ -30,6 +44,32 @@ public class DeviceService {
         UserModel user = session.users().getUserById(session.getContext().getRealm(), userId);
         if (user == null) {
             throw new IllegalArgumentException("User not found: " + userId);
+        }
+
+        return bindDevice(userId, deviceId, deviceName, platform, publicKeyJwk, algorithm, keyId,
+                attestationLevel, attestationStatement);
+    }
+
+    /**
+     * The actual single-active-device-per-account enforcement (doc section 4.3: "One active
+     * key per account. Registering a new key invalidates the previous one.") plus attestation
+     * recording and the re-binding notification hook. Deliberately session-free so it's directly
+     * unit-testable without mocking KeycloakSession.
+     */
+    Device bindDevice(String userId, String deviceId, String deviceName, String platform,
+                      String publicKeyJwk, String algorithm, String keyId,
+                      AttestationLevel attestationLevel, String attestationStatement) {
+        List<Device> existingActiveDevices = deviceStorage.getDevicesByUserId(userId).stream()
+                .filter(Device::isActive)
+                .toList();
+
+        Device previousDevice = existingActiveDevices.isEmpty() ? null : existingActiveDevices.get(0);
+        if (previousDevice != null) {
+            previousDevice.setStatus(Device.Status.REVOKED);
+            previousDevice.setRevokedAt(Instant.now());
+            deviceStorage.updateDevice(previousDevice);
+            logger.infov("Revoked previous active device {0} for userId={1} as part of re-binding",
+                    previousDevice.getDeviceId(), userId);
         }
 
         Device device = new Device();
@@ -42,12 +82,18 @@ public class DeviceService {
         device.setAlgorithm(algorithm);
         device.setStatus(Device.Status.ACTIVE);
         device.setKeyId(keyId);
+        device.setAttestationLevel(attestationLevel);
+        device.setAttestationStatement(attestationStatement);
         device.setCreatedAt(Instant.now());
 
         device = deviceStorage.createDevice(device);
 
-        logger.infov("Device registered: userId={0}, deviceId={1}, platform={2}",
-                userId, deviceId, platform);
+        logger.infov("Device registered: userId={0}, deviceId={1}, platform={2}, attestationLevel={3}",
+                userId, deviceId, platform, device.getAttestationLevel());
+
+        if (previousDevice != null) {
+            rebindingNotifier.notifyRebinding(userId, previousDevice, device);
+        }
 
         return device;
     }

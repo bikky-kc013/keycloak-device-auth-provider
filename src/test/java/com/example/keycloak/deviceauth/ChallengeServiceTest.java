@@ -19,7 +19,7 @@ class ChallengeServiceTest {
 
     @Test
     void testCreateChallenge() {
-        Challenge challenge = challengeService.createChallenge("user1", "device-1", "client1", "session1");
+        Challenge challenge = challengeService.createChallenge("user1", "device-1", "client1", "session1", ChallengeService.PURPOSE_SIGNIN);
 
         assertNotNull(challenge.getChallengeId());
         assertNotNull(challenge.getChallenge());
@@ -35,7 +35,7 @@ class ChallengeServiceTest {
 
     @Test
     void testGetChallenge() {
-        Challenge created = challengeService.createChallenge("user1", "device-1", "client1", "session1");
+        Challenge created = challengeService.createChallenge("user1", "device-1", "client1", "session1", ChallengeService.PURPOSE_SIGNIN);
         Challenge retrieved = challengeService.getChallenge(created.getChallengeId());
 
         assertNotNull(retrieved);
@@ -49,7 +49,7 @@ class ChallengeServiceTest {
 
     @Test
     void testConsumeChallenge() {
-        Challenge created = challengeService.createChallenge("user1", "device-1", "client1", "session1");
+        Challenge created = challengeService.createChallenge("user1", "device-1", "client1", "session1", ChallengeService.PURPOSE_SIGNIN);
         Challenge consumed = challengeService.consumeChallenge(created.getChallengeId());
 
         assertNotNull(consumed);
@@ -59,7 +59,7 @@ class ChallengeServiceTest {
 
     @Test
     void testConsumeChallengeTwiceFails() {
-        Challenge created = challengeService.createChallenge("user1", "device-1", "client1", "session1");
+        Challenge created = challengeService.createChallenge("user1", "device-1", "client1", "session1", ChallengeService.PURPOSE_SIGNIN);
         Challenge first = challengeService.consumeChallenge(created.getChallengeId());
         Challenge second = challengeService.consumeChallenge(created.getChallengeId());
 
@@ -70,7 +70,7 @@ class ChallengeServiceTest {
     @Test
     void testConsumeExpiredChallenge() {
         ChallengeService shortLived = new ChallengeService(0);
-        Challenge created = shortLived.createChallenge("user1", "device-1", "client1", "session1");
+        Challenge created = shortLived.createChallenge("user1", "device-1", "client1", "session1", ChallengeService.PURPOSE_SIGNIN);
 
         try {
             Thread.sleep(100);
@@ -85,7 +85,7 @@ class ChallengeServiceTest {
     @Test
     void testChallengeExpiration() {
         ChallengeService shortLived = new ChallengeService(0);
-        Challenge created = shortLived.createChallenge("user1", "device-1", "client1", "session1");
+        Challenge created = shortLived.createChallenge("user1", "device-1", "client1", "session1", ChallengeService.PURPOSE_SIGNIN);
 
         try {
             Thread.sleep(100);
@@ -99,7 +99,7 @@ class ChallengeServiceTest {
 
     @Test
     void testChallengeIsSingleUse() {
-        Challenge created = challengeService.createChallenge("user1", "device-1", "client1", "session1");
+        Challenge created = challengeService.createChallenge("user1", "device-1", "client1", "session1", ChallengeService.PURPOSE_SIGNIN);
         challengeService.consumeChallenge(created.getChallengeId());
 
         assertTrue(created.isUsed());
@@ -109,7 +109,7 @@ class ChallengeServiceTest {
     @Test
     void testCleanupExpiredChallenges() {
         ChallengeService shortLived = new ChallengeService(0);
-        Challenge created = shortLived.createChallenge("user1", "device-1", "client1", "session1");
+        Challenge created = shortLived.createChallenge("user1", "device-1", "client1", "session1", ChallengeService.PURPOSE_SIGNIN);
 
         try {
             Thread.sleep(100);
@@ -123,7 +123,7 @@ class ChallengeServiceTest {
 
     @Test
     void testGetChallengeValue() {
-        Challenge created = challengeService.createChallenge("user1", "device-1", "client1", "session1");
+        Challenge created = challengeService.createChallenge("user1", "device-1", "client1", "session1", ChallengeService.PURPOSE_SIGNIN);
         String value = challengeService.getChallengeValue(created.getChallengeId());
 
         assertNotNull(value);
@@ -132,10 +132,25 @@ class ChallengeServiceTest {
 
     @Test
     void testMultipleChallengesUnique() {
-        Challenge c1 = challengeService.createChallenge("user1", "device-1", "client1", "session1");
-        Challenge c2 = challengeService.createChallenge("user1", "device-1", "client1", "session1");
+        Challenge c1 = challengeService.createChallenge("user1", "device-1", "client1", "session1", ChallengeService.PURPOSE_SIGNIN);
+        Challenge c2 = challengeService.createChallenge("user1", "device-1", "client1", "session1", ChallengeService.PURPOSE_SIGNIN);
 
         assertNotEquals(c1.getChallengeId(), c2.getChallengeId());
         assertNotEquals(c1.getChallenge(), c2.getChallenge());
+    }
+
+    @Test
+    void testCreateChallengeDefaultsPurposeToSignin() {
+        Challenge challenge = challengeService.createChallenge("user1", "device-1", "client1", "session1", null);
+        assertEquals(ChallengeService.PURPOSE_SIGNIN, challenge.getPurpose());
+
+        Challenge blankPurpose = challengeService.createChallenge("user1", "device-1", "client1", "session1", "  ");
+        assertEquals(ChallengeService.PURPOSE_SIGNIN, blankPurpose.getPurpose());
+    }
+
+    @Test
+    void testCreateChallengeStepUpPurposePreserved() {
+        Challenge challenge = challengeService.createChallenge("user1", "device-1", "client1", "session1", ChallengeService.PURPOSE_STEP_UP);
+        assertEquals(ChallengeService.PURPOSE_STEP_UP, challenge.getPurpose());
     }
 }

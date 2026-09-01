@@ -34,7 +34,7 @@ class SignatureVerificationTest {
         Instant timestamp = Instant.now();
 
         byte[] payload = canonicalPayloadService.createCanonicalPayloadBytes(
-                challengeId, challenge, deviceId, clientId, timestamp);
+                challengeId, challenge, deviceId, clientId, ChallengeService.PURPOSE_SIGNIN, timestamp);
 
         Signature signer = Signature.getInstance("SHA256withECDSA");
         signer.initSign(keyPair.getPrivate());
@@ -163,9 +163,9 @@ class SignatureVerificationTest {
         Instant timestamp = Instant.ofEpochMilli(1234567890L);
 
         byte[] payload1 = canonicalPayloadService.createCanonicalPayloadBytes(
-                challengeId, challenge, deviceId, clientId, timestamp);
+                challengeId, challenge, deviceId, clientId, ChallengeService.PURPOSE_SIGNIN, timestamp);
         byte[] payload2 = canonicalPayloadService.createCanonicalPayloadBytes(
-                challengeId, challenge, deviceId, clientId, timestamp);
+                challengeId, challenge, deviceId, clientId, ChallengeService.PURPOSE_SIGNIN, timestamp);
 
         assertArrayEquals(payload1, payload2);
     }
@@ -175,11 +175,23 @@ class SignatureVerificationTest {
         Instant timestamp = Instant.ofEpochMilli(1234567890L);
 
         byte[] payload1 = canonicalPayloadService.createCanonicalPayloadBytes(
-                "c1", "ch1", "d1", "cl1", timestamp);
+                "c1", "ch1", "d1", "cl1", ChallengeService.PURPOSE_SIGNIN, timestamp);
         byte[] payload2 = canonicalPayloadService.createCanonicalPayloadBytes(
-                "c2", "ch1", "d1", "cl1", timestamp);
+                "c2", "ch1", "d1", "cl1", ChallengeService.PURPOSE_SIGNIN, timestamp);
 
         assertFalse(java.util.Arrays.equals(payload1, payload2));
+    }
+
+    @Test
+    void testCanonicalPayloadDifferentPurpose() {
+        Instant timestamp = Instant.ofEpochMilli(1234567890L);
+
+        byte[] signin = canonicalPayloadService.createCanonicalPayloadBytes(
+                "c1", "ch1", "d1", "cl1", ChallengeService.PURPOSE_SIGNIN, timestamp);
+        byte[] stepUp = canonicalPayloadService.createCanonicalPayloadBytes(
+                "c1", "ch1", "d1", "cl1", ChallengeService.PURPOSE_STEP_UP, timestamp);
+
+        assertFalse(java.util.Arrays.equals(signin, stepUp));
     }
 
     @Test
@@ -187,9 +199,9 @@ class SignatureVerificationTest {
         Instant timestamp = Instant.ofEpochMilli(1234567890L);
 
         String payload = canonicalPayloadService.createCanonicalPayload(
-                "c1", "ch1", "d1", "cl1", timestamp);
+                "c1", "ch1", "d1", "cl1", ChallengeService.PURPOSE_SIGNIN, timestamp);
 
-        String expected = "c1\nch1\nd1\ncl1\n1234567890";
+        String expected = "c1\nch1\nd1\ncl1\nsignin\n1234567890";
         assertEquals(expected, payload);
     }
 

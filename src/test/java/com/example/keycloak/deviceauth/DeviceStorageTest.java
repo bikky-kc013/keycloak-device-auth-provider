@@ -99,7 +99,12 @@ class DeviceStorageTest {
     }
 
     @Test
-    void testMultipleDevicesPerUser() {
+    void testStorageLayerIsPolicyAgnosticAndAllowsMultipleRows() {
+        // The storage layer is a dumb CRUD layer and intentionally does not enforce
+        // "one active device per account" itself - that policy lives in DeviceService
+        // (see DeviceServiceTest.testRegisteringSecondDeviceRevokesFirst). This test only
+        // documents that the storage primitive can hold multiple rows per user; it does
+        // NOT mean multiple concurrently-active devices is a supported end state.
         storage.createDevice(createTestDevice("user1", "device-1"));
         storage.createDevice(createTestDevice("user1", "device-2"));
         storage.createDevice(createTestDevice("user1", "device-3"));
