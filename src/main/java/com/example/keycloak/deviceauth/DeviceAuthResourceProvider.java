@@ -108,6 +108,7 @@ public class DeviceAuthResourceProvider implements RealmResourceProvider {
                 attestationLevel = AttestationLevel.fromString(request.attestation.level);
                 attestationStatement = request.attestation.statement;
             }
+            AssuranceLevel assuranceLevel = AssuranceLevel.fromString(request.acr);
 
             DeviceService deviceService = new DeviceService(deviceStorage, session);
             Device device = deviceService.registerDevice(
@@ -119,15 +120,18 @@ public class DeviceAuthResourceProvider implements RealmResourceProvider {
                     request.algorithm,
                     request.publicKey.kid,
                     attestationLevel,
-                    attestationStatement
+                    attestationStatement,
+                    assuranceLevel
             );
 
-            logger.infov("Device registered via REST, attestationLevel={0}", attestationLevel);
+            logger.infov("Device registered via REST, attestationLevel={0}, assuranceLevel={1}",
+                    attestationLevel, assuranceLevel);
 
             return Response.ok(Map.of(
                     "deviceId", device.getDeviceId(),
                     "status", device.getStatus().name(),
-                    "attestationLevel", device.getAttestationLevel().name()
+                    "attestationLevel", device.getAttestationLevel().name(),
+                    "acr", device.getAssuranceLevel().name()
             )).build();
 
         } catch (Exception e) {
@@ -262,6 +266,11 @@ public class DeviceAuthResourceProvider implements RealmResourceProvider {
         public String algorithm;
         @JsonProperty("attestation")
         public Attestation attestation;
+        /** Sewa assurance tier (T0/T1/T2/T3) the client believes it's registering under.
+         *  Unrecognized/missing values are recorded as UNKNOWN, never rejected - same
+         *  leniency as attestation.level. */
+        @JsonProperty("acr")
+        public String acr;
     }
 
     public static class Attestation {

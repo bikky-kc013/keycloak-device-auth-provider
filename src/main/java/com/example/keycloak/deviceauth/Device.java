@@ -21,6 +21,7 @@ public class Device {
     private String keyId;
     private AttestationLevel attestationLevel = AttestationLevel.UNKNOWN;
     private String attestationStatement;
+    private AssuranceLevel assuranceLevel = AssuranceLevel.UNKNOWN;
     private Instant createdAt;
     private Instant lastUsedAt;
     private Instant revokedAt;
@@ -77,6 +78,11 @@ public class Device {
 
     public String getAttestationStatement() { return attestationStatement; }
     public void setAttestationStatement(String attestationStatement) { this.attestationStatement = attestationStatement; }
+
+    public AssuranceLevel getAssuranceLevel() { return assuranceLevel; }
+    public void setAssuranceLevel(AssuranceLevel assuranceLevel) {
+        this.assuranceLevel = assuranceLevel != null ? assuranceLevel : AssuranceLevel.UNKNOWN;
+    }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
