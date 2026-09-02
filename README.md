@@ -74,7 +74,7 @@ If configuring by hand instead:
 ### 1. Create Realm
 
 ```
-Admin Console > Create Realm > Name: citizen
+Admin Console > Create Realm > Name: sewa-device-auth
 ```
 
 ### 2. Disable VERIFY_PROFILE
@@ -86,7 +86,7 @@ Keycloak's default `VERIFY_PROFILE` required action fires for auto-created users
 ```
 Admin Console > Clients > Create Client
   Client Type: OpenID Connect
-  Client ID: citizen-mobile
+  Client ID: sewa-mobile
 
   Settings:
     Access Type: public
@@ -163,7 +163,7 @@ Configure via `Authentication > Flows > device-auth-browser > Actions > Config`:
 Requires a Bearer access token from Flow A's token exchange (or any prior valid session). **Auto-revokes any existing active device for the account** - registering a new device is a re-binding event.
 
 ```bash
-curl -X POST "https://keycloak.example.com/realms/citizen/device-auth/register" \
+curl -X POST "https://keycloak.example.com/realms/sewa-device-auth/device-auth/register" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -200,7 +200,7 @@ Response:
 ### Revoke Device
 
 ```bash
-curl -X POST "https://keycloak.example.com/realms/citizen/device-auth/revoke" \
+curl -X POST "https://keycloak.example.com/realms/sewa-device-auth/device-auth/revoke" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"deviceId": "550e8400-e29b-41d4-a716-446655440000"}'
@@ -211,9 +211,9 @@ curl -X POST "https://keycloak.example.com/realms/citizen/device-auth/revoke" \
 **Unauthenticated** - the device itself is the credential under test; the account it belongs to is only revealed after a valid signature reaches the token endpoint.
 
 ```bash
-curl -X POST "https://keycloak.example.com/realms/citizen/device-auth/challenge" \
+curl -X POST "https://keycloak.example.com/realms/sewa-device-auth/device-auth/challenge" \
   -H "Content-Type: application/json" \
-  -d '{"deviceId": "550e8400-e29b-41d4-a716-446655440000", "clientId": "citizen-mobile", "purpose": "signin"}'
+  -d '{"deviceId": "550e8400-e29b-41d4-a716-446655440000", "clientId": "sewa-mobile", "purpose": "signin"}'
 ```
 
 `purpose` defaults to `"signin"`; pass `"step-up"` for an action-scoped authorization. `clientId` is required - there's no authenticated client context on this endpoint to derive it from, so the caller states it explicitly; it only becomes a real binding once the signed response is exchanged as that same OAuth client at the token endpoint.
@@ -234,9 +234,9 @@ Response:
 Standard Keycloak token endpoint, custom grant type - this is what actually issues real access/refresh/id tokens.
 
 ```bash
-curl -X POST "https://keycloak.example.com/realms/citizen/protocol/openid-connect/token" \
+curl -X POST "https://keycloak.example.com/realms/sewa-device-auth/protocol/openid-connect/token" \
   --data-urlencode "grant_type=urn:sewa:params:oauth:grant-type:device-key" \
-  --data-urlencode "client_id=citizen-mobile" \
+  --data-urlencode "client_id=sewa-mobile" \
   --data-urlencode "deviceId=550e8400-e29b-41d4-a716-446655440000" \
   --data-urlencode "challengeId=a1b2c3d4-..." \
   --data-urlencode "signature=<base64url signature>" \
@@ -263,7 +263,7 @@ Example:
 a1b2c3d4-e5f6-7890-abcd-ef1234567890
 AbCdEf1234567890AbCdEf1234567890AbCdEf=
 550e8400-e29b-41d4-a716-446655440000
-citizen-mobile
+sewa-mobile
 signin
 1725168000000
 ```
