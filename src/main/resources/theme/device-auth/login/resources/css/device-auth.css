@@ -1,0 +1,402 @@
+/*
+ * Restyles the Flow A phone-number and OTP steps to match the SuperApp
+ * mobile UI (SLDS design tokens: gold primary, neutral grays, rounded
+ * inputs/buttons, Google Sans type scale). Loaded in addition to the base
+ * "keycloak" theme's login.css - see theme.properties.
+ */
+
+:root {
+    --sa-font: "Google Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    --sa-gold-50: #FFFEF2;
+    --sa-gold-100: #FFF8D6;
+    --sa-gold-500: #FFC700;
+    --sa-gold-600: #E0AE00;
+    --sa-gold-700: #B38A00;
+
+    --sa-neutral-0: #FFFFFF;
+    --sa-neutral-50: #F7F7F7;
+    --sa-neutral-100: #EEEEEE;
+    --sa-neutral-150: #E6E6E6;
+    --sa-neutral-200: #DDDDDD;
+    --sa-neutral-400: #BCBCBC;
+    --sa-neutral-500: #ABABAB;
+    --sa-neutral-700: #676767;
+    --sa-neutral-800: #444444;
+    --sa-neutral-900: #222222;
+
+    --sa-red-100: #FDECEA;
+    --sa-red-500: #DC2626;
+    --sa-green-100: #E0F2EC;
+    --sa-green-500: #1FAA63;
+
+    --sa-radius-full: 9999px;
+    --sa-radius-xl: 8px;
+    --sa-radius-2xl: 12px;
+}
+
+body {
+    font-family: var(--sa-font);
+    color: var(--sa-neutral-900);
+    background: var(--sa-neutral-0);
+}
+
+.login-pf body,
+.login-pf-page {
+    background: var(--sa-neutral-0);
+}
+
+/* Flatten the inherited card chrome - the SuperApp screens these two steps
+   mirror (number entry, OTP) are full-bleed pages, not floating cards. */
+.login-pf .card-pf,
+.card-pf {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: var(--sa-neutral-0);
+}
+
+#kc-header {
+    padding: 8px 16px 0;
+    text-align: center;
+}
+
+#kc-header-wrapper {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--sa-neutral-500);
+    letter-spacing: 0;
+}
+
+#kc-content,
+#kc-content-wrapper {
+    padding: 0;
+}
+
+.alert {
+    font-family: var(--sa-font);
+    font-size: 14px;
+    border-radius: var(--sa-radius-xl);
+    padding: 12px 16px;
+}
+
+.alert-error {
+    background: var(--sa-red-100);
+    color: var(--sa-red-500);
+    border: 1px solid var(--sa-red-500);
+}
+
+.alert-success {
+    background: var(--sa-green-100);
+    color: var(--sa-green-500);
+    border: 1px solid var(--sa-green-500);
+}
+
+/* Buttons and inputs - restyle the base theme's default classes so every
+   inherited page (not just the two redesigned forms) picks up the brand. */
+.btn {
+    font-family: var(--sa-font);
+    font-size: 16px;
+    font-weight: 600;
+    height: 48px;
+    border: none;
+    border-radius: var(--sa-radius-2xl);
+    padding: 0 20px;
+    cursor: pointer;
+    transition: background-color .15s ease;
+}
+
+.btn-primary {
+    background: var(--sa-gold-500);
+    color: var(--sa-neutral-900);
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--sa-gold-600);
+}
+
+.btn-primary:disabled {
+    background: var(--sa-neutral-100);
+    color: var(--sa-neutral-400);
+    cursor: not-allowed;
+}
+
+.btn-block {
+    width: 100%;
+    display: block;
+}
+
+.form-control {
+    font-family: var(--sa-font);
+    font-size: 16px;
+    height: 52px;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--sa-neutral-200);
+    border-radius: var(--sa-radius-xl);
+    padding: 0 16px;
+    color: var(--sa-neutral-900);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--sa-gold-500);
+    box-shadow: 0 0 0 3px rgba(255, 199, 0, .25);
+}
+
+.control-label {
+    font-family: var(--sa-font);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--sa-neutral-800);
+    display: block;
+    margin-bottom: 6px;
+}
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+/* App-bar row: back chevron, step progress, help icon. */
+.sa-appbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--sa-neutral-100);
+    box-shadow: 0 1px 2px rgba(34, 34, 34, .06);
+}
+
+.sa-appbar-back {
+    background: none;
+    border: none;
+    padding: 8px;
+    margin: -8px;
+    display: flex;
+    cursor: pointer;
+}
+
+.sa-stepper {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    max-width: 160px;
+    margin: 0 auto;
+}
+
+.sa-stepper-seg {
+    flex: 1;
+    height: 4px;
+    border-radius: var(--sa-radius-full);
+    background: var(--sa-neutral-150);
+}
+
+.sa-stepper-seg.is-active {
+    background: var(--sa-gold-500);
+}
+
+.sa-appbar-help {
+    display: flex;
+    padding: 8px;
+    margin: -8px;
+}
+
+/* Page body. */
+.sa-body {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.sa-title {
+    font-size: 22px;
+    line-height: 36px;
+    font-weight: 600;
+    letter-spacing: -.5px;
+    margin: 0 0 5px;
+}
+
+.sa-subtitle {
+    font-size: 16px;
+    line-height: 20px;
+    color: var(--sa-neutral-700);
+    margin: 0 0 32px;
+}
+
+/* Phone number input group (flag + "+94" prefix). */
+.sa-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 52px;
+    border: 1px solid var(--sa-neutral-200);
+    border-radius: var(--sa-radius-xl);
+    padding: 0 12px;
+    background: var(--sa-neutral-0);
+}
+
+.sa-input-group:focus-within {
+    border-color: var(--sa-gold-500);
+    box-shadow: 0 0 0 3px rgba(255, 199, 0, .25);
+}
+
+.sa-input-group.has-error {
+    border-color: var(--sa-red-500);
+}
+
+.sa-input-group.has-error:focus-within {
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, .18);
+}
+
+.sa-input-prefix {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 10px;
+    margin-right: 10px;
+    border-right: 1px solid var(--sa-neutral-200);
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.sa-input-group input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: var(--sa-font);
+    font-size: 16px;
+    color: var(--sa-neutral-900);
+}
+
+.sa-input-clear {
+    display: none;
+    align-items: center;
+    background: none;
+    border: none;
+    padding: 4px;
+    color: var(--sa-neutral-500);
+    cursor: pointer;
+}
+
+.sa-input-group.has-value .sa-input-clear {
+    display: flex;
+}
+
+.sa-dev-hint {
+    background: var(--sa-gold-50);
+    border: 1px dashed var(--sa-gold-500);
+    border-radius: var(--sa-radius-xl);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--sa-gold-700);
+    margin-bottom: 24px;
+}
+
+/* OTP boxes. */
+.sa-otp-group {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.sa-otp-box {
+    width: 48px;
+    height: 56px;
+    padding: 0;
+    text-align: center;
+    font-family: var(--sa-font);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--sa-neutral-900);
+    border: 1px solid var(--sa-neutral-700);
+    border-radius: var(--sa-radius-xl);
+    background: var(--sa-neutral-0);
+}
+
+.sa-otp-box:focus {
+    outline: none;
+    border-width: 1.5px;
+    border-color: var(--sa-gold-500);
+}
+
+.sa-otp-group.has-error .sa-otp-box {
+    border-width: 1.5px;
+    border-color: var(--sa-red-500);
+    color: var(--sa-red-500);
+}
+
+.sa-otp-group.has-success .sa-otp-box {
+    border-width: 1.5px;
+    border-color: var(--sa-green-500);
+    color: var(--sa-green-500);
+}
+
+.sa-error-text {
+    color: var(--sa-red-500);
+    font-size: 16px;
+    margin: 8px 0 0;
+}
+
+/* Footer (submit button + resend link) - sticks to the bottom of the
+   viewport once content overflows, mirroring the app's floating button. */
+.sa-footer {
+    position: sticky;
+    bottom: 0;
+    background: var(--sa-neutral-0);
+    padding: 16px 0 24px;
+}
+
+.sa-resend-row {
+    text-align: center;
+    margin-top: 16px;
+}
+
+.sa-link-button {
+    background: none;
+    border: none;
+    padding: 8px;
+    font-family: var(--sa-font);
+    font-size: 16px;
+    color: var(--sa-neutral-900);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.sa-link-button:disabled {
+    color: var(--sa-neutral-500);
+    text-decoration: none;
+    cursor: default;
+}
+
+.sa-button.sa-loading {
+    color: transparent;
+    position: relative;
+}
+
+.sa-button.sa-loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid rgba(34, 34, 34, .3);
+    border-top-color: var(--sa-neutral-900);
+    border-radius: 50%;
+    animation: sa-spin .6s linear infinite;
+}
+
+@keyframes sa-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

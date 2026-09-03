@@ -15,8 +15,8 @@ set -euo pipefail
 KC_URL="${KC_URL:-http://localhost:8080}"
 KC_ADMIN_USER="${KC_ADMIN_USER:-admin}"
 KC_ADMIN_PASSWORD="${KC_ADMIN_PASSWORD:?Set KC_ADMIN_PASSWORD}"
-REALM="${REALM:-citizen}"
-CLIENT_ID="${CLIENT_ID:-citizen-mobile}"
+REALM="${REALM:-sewa-device-auth}"
+CLIENT_ID="${CLIENT_ID:-sewa-mobile}"
 LOGIN_THEME="${LOGIN_THEME:-device-auth}"
 
 # Space-separated list of valid redirect URIs for the mobile client's custom-scheme
@@ -90,9 +90,26 @@ PHONE_EXEC_ID=$(echo "$EXECUTIONS" | python3 -c "import sys,json; [print(e['id']
 OTP_EXEC_ID=$(echo "$EXECUTIONS" | python3 -c "import sys,json; [print(e['id']) for e in json.load(sys.stdin) if e['providerId']=='dev-otp-auth']")
 
 api PUT "/admin/realms/$REALM/authentication/flows/device-auth-browser/executions" \
-  "{\"id\":\"$PHONE_EXEC_ID\",\"requirement\":\"REQUIRED\",\"providerId\":\"phone-number-auth\",\"level\":0,\"index\":0}"
+  "{\"id\":\"$PHONE_EXEC_ID\",\"requirement\":\"REQUIRED\",\"providerId\":\"phone-number-auth\"}"
 api PUT "/admin/realms/$REALM/authentication/flows/device-auth-browser/executions" \
-  "{\"id\":\"$OTP_EXEC_ID\",\"requirement\":\"REQUIRED\",\"providerId\":\"dev-otp-auth\",\"level\":0,\"index\":1}"
+  "{\"id\":\"$OTP_EXEC_ID\",\"requirement\":\"REQUIRED\",\"providerId\":\"dev-otp-auth\"}"
+
+# The executions PUT above has no "index"/"level"/ordering field - the Admin REST
+# API silently ignores extra JSON properties, so a prior version of this script
+# that set those had no effect. Execution order is instead whatever order
+# POST .../executions/execution left them in, which is NOT guaranteed to match
+# creation order (observed on Keycloak 26.7.3: dev-otp-auth ended up before
+# phone-number-auth despite being created second) - explicitly fix it via
+# raise-priority/lower-priority, the only reordering mechanism this API exposes.
+# This matters: dev-otp-auth.requiresUser() is true, so if it ever runs before
+# phone-number-auth resolves a user, Keycloak rejects it with a generic
+# "Invalid username or password" error page instead of showing any form at all.
+CURRENT_FIRST=$(api GET "/admin/realms/$REALM/authentication/flows/device-auth-browser/executions" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['providerId'])")
+if [ "$CURRENT_FIRST" != "phone-number-auth" ]; then
+  echo "== Reordering: phone-number-auth must run before dev-otp-auth =="
+  api POST "/admin/realms/$REALM/authentication/executions/$PHONE_EXEC_ID/raise-priority"
+fi
 
 echo "== Configuring phone step (autoCreateUsers=true) =="
 api POST "/admin/realms/$REALM/authentication/executions/$PHONE_EXEC_ID/config" \

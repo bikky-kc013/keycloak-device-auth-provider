@@ -47,6 +47,7 @@ public class PhoneNumberAuthenticator implements Authenticator {
             boolean autoCreate = Boolean.parseBoolean(getConfigValue(context, AUTO_CREATE_USERS, "false"));
             if (!autoCreate) {
                 context.challenge(context.form()
+                        .setAttribute("submittedPhoneDigits", localDigits(normalizedPhone))
                         .setError("user_not_found")
                         .createForm("phone-number-form.ftl"));
                 return;
@@ -79,6 +80,11 @@ public class PhoneNumberAuthenticator implements Authenticator {
 
     @Override
     public void close() {
+    }
+
+    private static String localDigits(String normalizedPhone) {
+        String digits = normalizedPhone == null ? "" : normalizedPhone.replaceAll("\\D", "");
+        return digits.length() > 9 ? digits.substring(digits.length() - 9) : digits;
     }
 
     public static String normalizePhoneNumber(String phoneNumber) {

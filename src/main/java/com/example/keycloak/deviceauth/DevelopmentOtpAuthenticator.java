@@ -1,6 +1,7 @@
 package com.example.keycloak.deviceauth;
 
 import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
 import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.AuthenticationFlowError;
@@ -41,16 +42,20 @@ public class DevelopmentOtpAuthenticator implements Authenticator {
     public void action(AuthenticationFlowContext context) {
         MultivaluedMap<String, String> formData = context.getHttpRequest().getDecodedFormParameters();
         String submittedOtp = formData.getFirst("otp");
-        if (submittedOtp == null || submittedOtp.isBlank()) {
-            context.failure(AuthenticationFlowError.INVALID_CREDENTIALS);
-            return;
-        }
 
         Map<String, String> config = getConfig(context);
         boolean devOtpEnabled = Boolean.parseBoolean(config.getOrDefault(DEV_OTP_ENABLED, "true"));
-        String expectedOtp = config.getOrDefault(DEV_OTP_VALUE, "123456");
+        String devOtpValue = config.getOrDefault(DEV_OTP_VALUE, "123456");
         int otpLength = Integer.parseInt(config.getOrDefault(OTP_LENGTH, "6"));
         int maxAttempts = Integer.parseInt(config.getOrDefault(OTP_MAX_ATTEMPTS, "5"));
+
+        // A blank/missing submission (e.g. the JS-driven boxes never combined into
+        // the hidden field) is not a wrong guess - let the user just retry instead
+        // of terminating the flow and without counting it as a failed attempt.
+        if (submittedOtp == null || submittedOtp.isBlank()) {
+            context.challenge(challengeForm(context, devOtpEnabled ? devOtpValue : null, "otp_required"));
+            return;
+        }
 
         String userId = context.getUser() != null ? context.getUser().getId() : "unknown";
         AtomicInteger attempts = attemptCounters.computeIfAbsent(userId, k -> new AtomicInteger(0));
@@ -70,19 +75,23 @@ public class DevelopmentOtpAuthenticator implements Authenticator {
             return;
         }
 
-        if (submittedOtp.length() != otpLength) {
-            context.failure(AuthenticationFlowError.INVALID_CREDENTIALS);
+        if (submittedOtp.length() != otpLength || !submittedOtp.equals(devOtpValue)) {
+            logger.warnv("OTP verification failed");
+            context.challenge(challengeForm(context, devOtpValue, "otp_invalid"));
             return;
         }
 
-        if (submittedOtp.equals(expectedOtp)) {
-            logger.infov("OTP verification successful");
-            attemptCounters.remove(userId);
-            context.success();
-        } else {
-            logger.warnv("OTP verification failed");
-            context.failure(AuthenticationFlowError.INVALID_CREDENTIALS);
+        logger.infov("OTP verification successful");
+        attemptCounters.remove(userId);
+        context.success();
+    }
+
+    private Response challengeForm(AuthenticationFlowContext context, String devOtpValue, String errorKey) {
+        var form = context.form();
+        if (devOtpValue != null) {
+            form.setAttribute("devOtpHint", devOtpValue);
         }
+        return form.setError(errorKey).createForm("otp-form.ftl");
     }
 
     @Override

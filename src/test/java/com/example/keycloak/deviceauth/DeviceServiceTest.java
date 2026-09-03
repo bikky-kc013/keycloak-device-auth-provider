@@ -98,6 +98,25 @@ class DeviceServiceTest {
         assertEquals(AttestationLevel.UNKNOWN, device.getAttestationLevel());
     }
 
+    @Test
+    void testAssuranceLevelRoundTripsThroughRegistration() {
+        Device device = deviceService.bindDevice("user1", "device-1", "Phone", "android",
+                testJwk(), "ES256", "key-1", AttestationLevel.HARDWARE, null, AssuranceLevel.T1);
+
+        Device reloaded = storage.getDeviceById("device-1");
+        assertEquals(AssuranceLevel.T1, reloaded.getAssuranceLevel());
+    }
+
+    @Test
+    void testOmittedAssuranceLevelDefaultsToUnknownAndDoesNotBlock() {
+        // Existing 9-arg call sites (pre-dating the acr field) must keep working unchanged.
+        Device device = deviceService.bindDevice("user1", "device-1", "Phone", "android",
+                testJwk(), "ES256", "key-1", AttestationLevel.HARDWARE, null);
+
+        assertEquals(Device.Status.ACTIVE, device.getStatus());
+        assertEquals(AssuranceLevel.UNKNOWN, device.getAssuranceLevel());
+    }
+
     private String testJwk() {
         return "{\"kty\":\"EC\",\"crv\":\"P-256\",\"x\":\"test\",\"y\":\"test\",\"kid\":\"key-1\"}";
     }

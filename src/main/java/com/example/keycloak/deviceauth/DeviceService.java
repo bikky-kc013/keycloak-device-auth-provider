@@ -37,6 +37,14 @@ public class DeviceService {
     public Device registerDevice(String userId, String deviceId, String deviceName, String platform,
                                  String publicKeyJwk, String algorithm, String keyId,
                                  AttestationLevel attestationLevel, String attestationStatement) {
+        return registerDevice(userId, deviceId, deviceName, platform, publicKeyJwk, algorithm, keyId,
+                attestationLevel, attestationStatement, AssuranceLevel.UNKNOWN);
+    }
+
+    public Device registerDevice(String userId, String deviceId, String deviceName, String platform,
+                                 String publicKeyJwk, String algorithm, String keyId,
+                                 AttestationLevel attestationLevel, String attestationStatement,
+                                 AssuranceLevel assuranceLevel) {
         if (deviceStorage.hasDeviceWithId(deviceId)) {
             throw new IllegalArgumentException("Device with id " + deviceId + " already exists");
         }
@@ -47,7 +55,7 @@ public class DeviceService {
         }
 
         return bindDevice(userId, deviceId, deviceName, platform, publicKeyJwk, algorithm, keyId,
-                attestationLevel, attestationStatement);
+                attestationLevel, attestationStatement, assuranceLevel);
     }
 
     /**
@@ -59,6 +67,14 @@ public class DeviceService {
     Device bindDevice(String userId, String deviceId, String deviceName, String platform,
                       String publicKeyJwk, String algorithm, String keyId,
                       AttestationLevel attestationLevel, String attestationStatement) {
+        return bindDevice(userId, deviceId, deviceName, platform, publicKeyJwk, algorithm, keyId,
+                attestationLevel, attestationStatement, AssuranceLevel.UNKNOWN);
+    }
+
+    Device bindDevice(String userId, String deviceId, String deviceName, String platform,
+                      String publicKeyJwk, String algorithm, String keyId,
+                      AttestationLevel attestationLevel, String attestationStatement,
+                      AssuranceLevel assuranceLevel) {
         List<Device> existingActiveDevices = deviceStorage.getDevicesByUserId(userId).stream()
                 .filter(Device::isActive)
                 .toList();
@@ -84,12 +100,13 @@ public class DeviceService {
         device.setKeyId(keyId);
         device.setAttestationLevel(attestationLevel);
         device.setAttestationStatement(attestationStatement);
+        device.setAssuranceLevel(assuranceLevel);
         device.setCreatedAt(Instant.now());
 
         device = deviceStorage.createDevice(device);
 
-        logger.infov("Device registered: userId={0}, deviceId={1}, platform={2}, attestationLevel={3}",
-                userId, deviceId, platform, device.getAttestationLevel());
+        logger.infov("Device registered: userId={0}, deviceId={1}, platform={2}, attestationLevel={3}, assuranceLevel={4}",
+                userId, deviceId, platform, device.getAttestationLevel(), device.getAssuranceLevel());
 
         if (previousDevice != null) {
             rebindingNotifier.notifyRebinding(userId, previousDevice, device);
