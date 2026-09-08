@@ -5,13 +5,20 @@
         return (value || "").replace(/\D/g, "");
     }
 
-    function initBackButtons() {
-        var buttons = document.querySelectorAll(".sa-appbar-back");
-        for (var i = 0; i < buttons.length; i++) {
-            buttons[i].addEventListener("click", function () {
-                window.history.back();
-            });
+    // Sri Lankan mobile numbers are a 9-digit national number, optionally typed
+    // with the domestic trunk prefix "0" in front (10 digits total) - both are
+    // valid input here, matching the SuperApp number field's own validation.
+    function isValidLkDigits(digits) {
+        return digits.length === 9 || digits.length === 10;
+    }
+
+    // Strips a leading trunk "0" from a 10-digit entry so the result is always
+    // the bare 9-digit national number to combine with the "94" country code.
+    function toNationalDigits(digits) {
+        if (digits.length === 10 && digits.charAt(0) === "0") {
+            return digits.slice(1);
         }
+        return digits;
     }
 
     function initPhoneForm() {
@@ -26,13 +33,19 @@
         var submitBtn = document.getElementById("phoneNumberSubmit");
 
         function syncState() {
+            var digits = digitsOnly(input.value);
+            var valid = isValidLkDigits(digits);
             if (group) {
-                group.classList.toggle("has-value", input.value.length > 0);
+                group.classList.toggle("has-value", digits.length > 0);
+                group.classList.toggle("is-valid", valid);
+            }
+            if (submitBtn) {
+                submitBtn.disabled = !valid;
             }
         }
 
         input.addEventListener("input", function () {
-            var digits = digitsOnly(input.value).slice(0, 9);
+            var digits = digitsOnly(input.value).slice(0, 10);
             if (digits !== input.value) {
                 input.value = digits;
             }
@@ -53,11 +66,13 @@
             });
         }
 
-        form.addEventListener("submit", function () {
+        form.addEventListener("submit", function (event) {
             var digits = digitsOnly(input.value);
-            if (digits.length > 0) {
-                input.value = "94" + digits;
+            if (!isValidLkDigits(digits)) {
+                event.preventDefault();
+                return;
             }
+            input.value = "94" + toNationalDigits(digits);
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.classList.add("sa-loading");
@@ -195,7 +210,6 @@
     }
 
     document.addEventListener("DOMContentLoaded", function () {
-        initBackButtons();
         initPhoneForm();
         initOtpForm();
     });

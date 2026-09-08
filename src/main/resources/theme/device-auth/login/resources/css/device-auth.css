@@ -170,13 +170,12 @@ body {
     box-shadow: 0 1px 2px rgba(34, 34, 34, .06);
 }
 
-.sa-appbar-back {
-    background: none;
-    border: none;
-    padding: 8px;
-    margin: -8px;
-    display: flex;
-    cursor: pointer;
+/* Balances .sa-appbar-help's width on the other side so the stepper stays
+   visually centered now that there's no back button. */
+.sa-appbar-spacer {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
 }
 
 .sa-stepper {
@@ -285,7 +284,20 @@ body {
     cursor: pointer;
 }
 
-.sa-input-group.has-value .sa-input-clear {
+.sa-input-group.has-value:not(.is-valid) .sa-input-clear {
+    display: flex;
+}
+
+/* Success checkmark - mirrors the SuperApp number field, where a valid (9 or
+   10 digit) number swaps the clear button for a green check instead of
+   showing both. */
+.sa-input-check {
+    display: none;
+    align-items: center;
+    padding: 4px;
+}
+
+.sa-input-group.is-valid .sa-input-check {
     display: flex;
 }
 

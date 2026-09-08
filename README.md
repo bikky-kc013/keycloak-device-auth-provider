@@ -120,6 +120,28 @@ Flow Name: device-auth-browser
 Realm Settings > Themes > Login theme: device-auth
 ```
 
+### 6. Phone Number Claim
+
+```
+Admin Console > Client Scopes > Create client scope
+  Name: phone-number
+  Type: Default
+  Include in token scope: OFF
+
+  Client Scopes > phone-number > Mappers > Configure a new mapper > User Attribute
+    Name: phone-number
+    User Attribute: phoneNumber
+    Token Claim Name: phone_number
+    Claim JSON Type: String
+    Add to ID token: ON
+    Add to access token: OFF
+    Add to userinfo: ON
+
+  Clients > sewa-mobile > Client Scopes > Add client scope > phone-number (Default)
+```
+
+This is a deliberate, narrow exception to this realm being otherwise auth-only (see `sewa-mobile` not having `profile` assigned, [§ Claims](#claims) below) - the enrolled phone number is the authentication identifier itself, not general profile data, and it's kept out of the access token since resource servers calling with that token have no reason to see it.
+
 ## Authentication Flows
 
 ### Flow A: Enrollment / re-binding
@@ -139,6 +161,26 @@ POST /device-auth/challenge (deviceId, clientId, purpose)
 ```
 
 `purpose` is `"signin"` (default) or `"step-up"` - it's baked into the signed payload server-side from whatever the challenge was created with, so a client can't present a signin-purposed signature as step-up authorization for a sensitive action. Step-up is otherwise identical to sign-in: a fresh challenge, requested at the point of the action.
+
+## Claims
+
+This realm is otherwise auth-only - `sewa-mobile` deliberately doesn't have the `profile` client scope (any other user data lives in Sewa's own backend), and requesting `profile` at the authorization endpoint fails with `invalid_scope`.
+
+The one exception is the enrolled phone number, exposed as a standard `phone_number` claim via the `phone-number` client scope (see [Realm Configuration § 6](#6-phone-number-claim)) - treated as an exception because it's the authentication identifier itself, not general profile data:
+
+- **Where**: the `id_token` (decode it client-side) and the `/userinfo` endpoint. Deliberately **not** in the `access_token` - that token goes to resource servers on every API call, which have no need to see it.
+- **When**: both flows, automatically. It's a *default* client scope, so it's issued regardless of the `scope` the client requests, on every Flow A code exchange and every Flow B `device-key` grant - no client-side change needed to start receiving it once the realm is configured.
+- **Value**: whatever is currently in the user's `phoneNumber` attribute (see [Configuration](#configuration) `phoneAttribute`) - the same number resolved during Flow A's phone-lookup step.
+
+```json
+{
+  "sub": "f1e2d3c4-...",
+  "iss": "https://keycloak.example.com/realms/sewa-device-auth",
+  "aud": "sewa-mobile",
+  "phone_number": "+9779812345678",
+  "...": "other standard OIDC claims (exp, iat, etc.)"
+}
+```
 
 ## Configuration
 
@@ -243,7 +285,7 @@ curl -X POST "https://keycloak.example.com/realms/sewa-device-auth/protocol/open
   --data-urlencode "timestamp=<epoch millis embedded in the signed payload>"
 ```
 
-Returns a normal Keycloak `AccessTokenResponse` (access_token, refresh_token, id_token, ...), minted through Keycloak's regular `TokenManager` pipeline - a real session is created, not a hand-rolled token.
+Returns a normal Keycloak `AccessTokenResponse` (access_token, refresh_token, id_token, ...), minted through Keycloak's regular `TokenManager` pipeline - a real session is created, not a hand-rolled token. The `id_token` carries the `phone_number` claim (see [Claims](#claims)) the same as Flow A's token exchange.
 
 ## Signature Format
 

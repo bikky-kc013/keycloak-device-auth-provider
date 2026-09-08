@@ -145,10 +145,15 @@ public class DeviceKeyGrantType extends OAuth2GrantTypeBase {
             }
         }
 
-        String scopeParam = clientSessionCtx.getClientSession().getNote(OAuth2Constants.SCOPE);
-        if (TokenUtil.isOIDCRequest(scopeParam)) {
-            responseBuilder.generateIDToken().generateAccessTokenHash();
-        }
+        // Unlike a standard grant, this endpoint's documented request params (see
+        // auth_developer_guide.md SS6.4) never include `scope` - the client has no reason to
+        // send one, since this grant exists solely to silently mint a real OIDC sign-in
+        // session. Gating on TokenUtil.isOIDCRequest(scopeParam) here would mean it's always
+        // false (no `scope` form param -> OAuth2GrantTypeBase.getRequestedScopes() returns
+        // null) and an id_token would never be generated, despite the response contract in
+        // SS6.4 promising one unconditionally - so always generate it rather than requiring
+        // callers to know to pass scope=openid.
+        responseBuilder.generateIDToken().generateAccessTokenHash();
 
         checkAndBindMtlsHoKToken(responseBuilder, useRefreshToken);
 

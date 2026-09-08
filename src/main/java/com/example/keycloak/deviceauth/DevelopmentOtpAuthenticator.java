@@ -6,6 +6,7 @@ import org.jboss.logging.Logger;
 import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.AuthenticationFlowError;
 import org.keycloak.authentication.Authenticator;
+import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
@@ -35,7 +36,26 @@ public class DevelopmentOtpAuthenticator implements Authenticator {
         if (devOtpEnabled) {
             form.setAttribute("devOtpHint", devOtpValue);
         }
+        setPhoneNumberAttribute(context, form);
         context.challenge(form.createForm("otp-form.ftl"));
+    }
+
+    // Lets otp-form.ftl show "we sent a code to <number>", matching the SuperApp OTP
+    // screen. PhoneNumberAuthenticator runs first in this flow and either binds an
+    // existing user (found by the phoneAttribute) or auto-creates one with the
+    // normalized number as its username - falling back to username covers both.
+    private void setPhoneNumberAttribute(AuthenticationFlowContext context, LoginFormsProvider form) {
+        UserModel user = context.getUser();
+        if (user == null) {
+            return;
+        }
+        String phone = user.getFirstAttribute("phoneNumber");
+        if (phone == null || phone.isBlank()) {
+            phone = user.getUsername();
+        }
+        if (phone != null && !phone.isBlank()) {
+            form.setAttribute("phoneNumber", phone);
+        }
     }
 
     @Override
@@ -91,6 +111,7 @@ public class DevelopmentOtpAuthenticator implements Authenticator {
         if (devOtpValue != null) {
             form.setAttribute("devOtpHint", devOtpValue);
         }
+        setPhoneNumberAttribute(context, form);
         return form.setError(errorKey).createForm("otp-form.ftl");
     }
 

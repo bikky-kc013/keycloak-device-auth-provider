@@ -76,6 +76,44 @@ api POST "/admin/realms/$REALM/clients" "$(cat <<JSON
 JSON
 )"
 
+echo "== Creating 'phone-number' client scope (phone_number claim, ID token + userinfo only) =="
+# Deliberately its own client scope, not the built-in 'profile' - this realm is auth-only by
+# design (sewa-mobile doesn't get 'profile'; see auth_developer_guide.md SS4.1) and the enrolled
+# phone number is an exception carved out because it's the authentication identifier itself, not
+# general profile data. Marked DEFAULT (not optional) so it's always issued without the client
+# needing to request an extra scope, and access.token.claim is deliberately "false" - the access
+# token goes to resource servers on every API call and has no reason to carry this; only the ID
+# token/userinfo, which the client itself consumes once at sign-in, should.
+api POST "/admin/realms/$REALM/client-scopes" \
+  '{"name":"phone-number","protocol":"openid-connect","attributes":{"include.in.token.scope":"false","display.on.consent.screen":"false"}}'
+
+PHONE_SCOPE_ID=$(api GET "/admin/realms/$REALM/client-scopes" \
+  | python3 -c "import sys,json; [print(s['id']) for s in json.load(sys.stdin) if s['name']=='phone-number']")
+
+api POST "/admin/realms/$REALM/client-scopes/$PHONE_SCOPE_ID/protocol-mappers/models" "$(cat <<JSON
+{
+  "name": "phone-number",
+  "protocol": "openid-connect",
+  "protocolMapper": "oidc-usermodel-attribute-mapper",
+  "config": {
+    "user.attribute": "phoneNumber",
+    "claim.name": "phone_number",
+    "jsonType.label": "String",
+    "id.token.claim": "true",
+    "access.token.claim": "false",
+    "userinfo.token.claim": "true",
+    "lightweight.claim": "false",
+    "multivalued": "false"
+  }
+}
+JSON
+)"
+
+echo "== Assigning 'phone-number' as a DEFAULT scope on '$CLIENT_ID' =="
+CLIENT_UUID=$(api GET "/admin/realms/$REALM/clients?clientId=$CLIENT_ID" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['id'])")
+api PUT "/admin/realms/$REALM/clients/$CLIENT_UUID/default-client-scopes/$PHONE_SCOPE_ID"
+
 echo "== Creating browser flow 'device-auth-browser' (Phone REQUIRED -> OTP REQUIRED) =="
 api POST "/admin/realms/$REALM/authentication/flows" \
   '{"alias":"device-auth-browser","providerId":"basic-flow","topLevel":true,"builtIn":false}'
@@ -128,3 +166,6 @@ echo "are not part of this flow - see README 'Realm Configuration' for why (Flow
 echo "token issuance on device registration; Flow B never uses a browser at all)."
 echo "Custom grant type 'urn:sewa:params:oauth:grant-type:device-key' needs no separate realm"
 echo "config - it's available automatically once the provider jar is deployed."
+echo "Both flows now return the enrolled phone number as an id_token 'phone_number' claim"
+echo "(and via /userinfo) - see README 'Claims' / auth_developer_guide.md SS4.1 for why this is"
+echo "the one deliberate exception to this realm's otherwise auth-only, no-profile-data design."

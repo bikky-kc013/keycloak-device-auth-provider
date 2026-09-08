@@ -2,11 +2,7 @@
 <@layout.registrationLayout displayInfo=false displayMessage=false; section>
     <#if section = "form">
         <div class="sa-appbar">
-            <button type="button" class="sa-appbar-back" aria-label="${msg("doGoBack")!"Back"}">
-                <svg width="12" height="20" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M10 2L2 10L10 18" stroke="#222222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </button>
+            <span class="sa-appbar-spacer" aria-hidden="true"></span>
             <div class="sa-stepper" role="presentation">
                 <span class="sa-stepper-seg is-active"></span>
                 <span class="sa-stepper-seg is-active"></span>
@@ -20,7 +16,13 @@
 
         <div class="sa-body">
             <h1 class="sa-title">${msg("verifyMobileTitle")!"Verify your mobile number"}</h1>
-            <p class="sa-subtitle">${msg("otpSentDesc")!"Enter the 6-digit code we sent you."}</p>
+            <p class="sa-subtitle">
+                <#if phoneNumber?has_content>
+                    ${msg("otpSentDescWithNumber", phoneNumber)!"We sent a 6-digit code to ${phoneNumber}."}
+                <#else>
+                    ${msg("otpSentDesc")!"Enter the 6-digit code we sent you."}
+                </#if>
+            </p>
 
             <#if devOtpHint?has_content>
                 <div class="sa-dev-hint">${msg("devOtpHintLabel")!"Testing mode"} &mdash; OTP is <strong>${devOtpHint}</strong></div>

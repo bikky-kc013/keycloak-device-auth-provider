@@ -2,11 +2,7 @@
 <@layout.registrationLayout displayInfo=false displayMessage=false; section>
     <#if section = "form">
         <div class="sa-appbar">
-            <button type="button" class="sa-appbar-back" aria-label="${msg("doGoBack")!"Back"}">
-                <svg width="12" height="20" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M10 2L2 10L10 18" stroke="#222222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </button>
+            <span class="sa-appbar-spacer" aria-hidden="true"></span>
             <div class="sa-stepper" role="presentation">
                 <span class="sa-stepper-seg is-active"></span>
                 <span class="sa-stepper-seg"></span>
@@ -45,13 +41,18 @@
                             <span>+94</span>
                         </span>
                         <input type="tel" id="phoneNumber" name="phoneNumber" inputmode="numeric"
-                               autocomplete="tel-national" maxlength="9" placeholder="77 123 4567"
+                               autocomplete="tel-national" maxlength="10" placeholder="77 123 4567"
                                value="${submittedPhoneDigits!""}" autofocus />
                         <button type="button" class="sa-input-clear" id="phoneNumberClear" aria-label="${msg("doClear")!"Clear"}">
                             <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
                             </svg>
                         </button>
+                        <span class="sa-input-check" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M10 0C4.486 0 0 4.486 0 10C0 15.514 4.486 20 10 20C15.514 20 20 15.514 20 10C20 4.486 15.514 0 10 0ZM14.844 7.594L9.28 13.594C9.187 13.694 9.075 13.774 8.951 13.829C8.827 13.884 8.693 13.912 8.558 13.912C8.423 13.912 8.289 13.884 8.165 13.829C8.041 13.774 7.929 13.694 7.836 13.594L5.156 10.719C4.966 10.514 4.966 10.181 5.156 9.977C5.346 9.772 5.654 9.772 5.844 9.977L8.558 12.891L14.156 6.883C14.346 6.678 14.654 6.678 14.844 6.883C15.034 7.087 15.034 7.39 14.844 7.594Z" fill="#1FAA63"/>
+                            </svg>
+                        </span>
                     </div>
                 </div>
 
