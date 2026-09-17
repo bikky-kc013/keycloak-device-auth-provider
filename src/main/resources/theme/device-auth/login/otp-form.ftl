@@ -50,15 +50,19 @@
                     <div class="sa-error-text">${kcSanitize(message.summary)?no_esc}</div>
                 </#if>
 
+                <input type="hidden" name="resendOtp" id="resendOtp" value="false" />
+
                 <div class="sa-footer">
                     <button type="submit" id="otpSubmit"
                             class="${properties.kcButtonClass!} ${properties.kcButtonPrimaryClass!} ${properties.kcButtonBlockClass!} sa-button">
                         ${msg("doVerify")!"Verify"}
                     </button>
-                    <#-- Resend has no backend wiring yet (OTP delivery is dev-only,
-                         see README known limitations) - cosmetic cooldown only. -->
+                    <#-- Regenerates the dev OTP server-side (DevelopmentOtpAuthenticator.
+                         handleResend) - real delivery is still dev-only (no SMS gateway),
+                         see README known limitations, but the code itself genuinely
+                         changes so the old one correctly stops working. -->
                     <div class="sa-resend-row">
-                        <button type="button" class="sa-link-button" id="otpResend">${msg("otpNoReceive")!"Didn't receive the code?"} ${msg("doResend")!"Resend"}</button>
+                        <button type="button" class="sa-link-button" id="otpResend" data-resend-count="${resendCount!0}">${msg("otpNoReceive")!"Didn't receive the code?"} ${msg("doResend")!"Resend"}</button>
                     </div>
                 </div>
             </form>

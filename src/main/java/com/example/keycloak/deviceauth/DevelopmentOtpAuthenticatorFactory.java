@@ -70,10 +70,13 @@ public class DevelopmentOtpAuthenticatorFactory implements AuthenticatorFactory,
 
         ProviderConfigProperty maxAttempts = new ProviderConfigProperty();
         maxAttempts.setName(DevelopmentOtpAuthenticator.OTP_MAX_ATTEMPTS);
-        maxAttempts.setLabel("Max OTP Attempts");
-        maxAttempts.setHelpText("Maximum number of OTP verification attempts");
+        maxAttempts.setLabel("Soft-block attempts (this flow only)");
+        maxAttempts.setHelpText("Failed attempts within a single flow before blocking it with retry "
+                + "guidance. The 5th CONSECUTIVE failure across separate flow attempts triggers a "
+                + "temporary account lock instead, via the realm's Brute Force Detection setting - "
+                + "not this value.");
         maxAttempts.setType(ProviderConfigProperty.STRING_TYPE);
-        maxAttempts.setDefaultValue("5");
+        maxAttempts.setDefaultValue("3");
 
         return List.of(devEnabled, devValue, otpLength, maxAttempts);
     }

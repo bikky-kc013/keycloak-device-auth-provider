@@ -34,6 +34,13 @@ public class PhoneNumberAuthenticator implements Authenticator {
         }
 
         String normalizedPhone = normalizePhoneNumber(phoneNumber);
+        if (normalizedPhone == null) {
+            context.challenge(context.form()
+                    .setError("phone_number_invalid")
+                    .createForm("phone-number-form.ftl"));
+            return;
+        }
+
         String phoneAttribute = getConfigValue(context, PHONE_ATTRIBUTE, "phoneNumber");
 
         RealmModel realm = context.getRealm();
@@ -87,15 +94,30 @@ public class PhoneNumberAuthenticator implements Authenticator {
         return digits.length() > 9 ? digits.substring(digits.length() - 9) : digits;
     }
 
+    /**
+     * Hardcoded to Sri Lankan mobile numbers - this realm and provider are
+     * Sewa-specific, not a general-purpose multi-country IAM, so there's no value
+     * in a country-agnostic normalizer here. Accepts three input shapes and
+     * returns them all as the canonical "+94XXXXXXXXX" form, or null if none
+     * match: the bare 9-digit national number, the 10-digit local form with the
+     * domestic trunk prefix "0", or an already country-coded number ("+94...",
+     * "94...", or with spaces/dashes/parens/dots). device-auth.js's phone form
+     * pre-normalizes client-side, but this is the authoritative server-side
+     * check regardless of whether that JS ran (disabled JS, or a future caller
+     * that skips the theme entirely).
+     */
     public static String normalizePhoneNumber(String phoneNumber) {
-        if (phoneNumber == null) {
-            return null;
+        String digits = phoneNumber == null ? "" : phoneNumber.replaceAll("\\D", "");
+        if (digits.length() == 11 && digits.startsWith("94")) {
+            return "+" + digits;
         }
-        String normalized = phoneNumber.replaceAll("[\\s\\-\\(\\)\\.]", "");
-        if (!normalized.startsWith("+") && normalized.length() >= 10) {
-            normalized = "+" + normalized;
+        if (digits.length() == 10 && digits.startsWith("0")) {
+            return "+94" + digits.substring(1);
         }
-        return normalized;
+        if (digits.length() == 9) {
+            return "+94" + digits;
+        }
+        return null;
     }
 
     private String getConfigValue(AuthenticationFlowContext context, String key, String defaultValue) {

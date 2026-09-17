@@ -49,6 +49,32 @@ api POST /admin/realms "{\"realm\":\"$REALM\",\"enabled\":true}"
 echo "== Setting login theme to '$LOGIN_THEME' =="
 api PUT "/admin/realms/$REALM" "{\"loginTheme\":\"$LOGIN_THEME\"}"
 
+echo "== Setting token lifespans (access 15m, session-idle/refresh 1h) =="
+api PUT "/admin/realms/$REALM" \
+  '{"accessTokenLifespan":900,"ssoSessionIdleTimeout":3600}'
+
+echo "== Enabling Brute Force Detection (5th CONSECUTIVE failed login -> 30 min lock) =="
+# Applies realm-wide, but this realm's only credential check is dev-otp-auth's
+# OTP verification (browser flow), so in practice this only ever fires from OTP
+# failures - there is no password/other credential type to conflate it with.
+# Separate from, and complementary to, DevelopmentOtpAuthenticator's own
+# per-flow-attempt soft block at 3 fails (otpMaxAttempts, configured below) -
+# that resets every flow restart, this does not (maxDeltaTimeSeconds is the
+# window failures must fall within to still count as consecutive).
+api PUT "/admin/realms/$REALM" "$(cat <<'JSON'
+{
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 1800,
+  "maxFailureWaitSeconds": 1800,
+  "minimumQuickLoginWaitSeconds": 1800,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200
+}
+JSON
+)"
+
 echo "== Disabling VERIFY_PROFILE required action =="
 # Keycloak's default VERIFY_PROFILE required action fires for auto-created users missing
 # standard profile fields (email etc.) and would block token issuance in Flow A - see
@@ -152,6 +178,11 @@ fi
 echo "== Configuring phone step (autoCreateUsers=true) =="
 api POST "/admin/realms/$REALM/authentication/executions/$PHONE_EXEC_ID/config" \
   '{"alias":"phone-config","config":{"autoCreateUsers":"true","phoneAttribute":"phoneNumber"}}'
+
+echo "== Configuring OTP step (otpMaxAttempts=3 soft-block; 5th-consecutive hard lock is the"
+echo "   Brute Force Detection config above, not this authenticator) =="
+api POST "/admin/realms/$REALM/authentication/executions/$OTP_EXEC_ID/config" \
+  '{"alias":"otp-config","config":{"otpMaxAttempts":"3"}}'
 
 echo "== IMPORTANT: leave dev-otp-auth's devOtpEnabled=true default ONLY for non-production realms."
 echo "   Set devOtpEnabled=false (via this step's authenticator config) before going to production -"

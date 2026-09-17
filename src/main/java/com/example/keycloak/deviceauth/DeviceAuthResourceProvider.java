@@ -6,12 +6,16 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
+import org.keycloak.models.UserSessionModel;
 import org.keycloak.services.managers.AppAuthManager;
 import org.keycloak.services.managers.AuthenticationManager;
 import org.keycloak.services.resource.RealmResourceProvider;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class DeviceAuthResourceProvider implements RealmResourceProvider {
 
@@ -93,7 +97,8 @@ public class DeviceAuthResourceProvider implements RealmResourceProvider {
                 return errorResponse(Response.Status.BAD_REQUEST, "Invalid public key format");
             }
 
-            UserModel authenticatedUser = authenticateBearer();
+            AuthenticationManager.AuthResult authResult = authenticateBearer();
+            UserModel authenticatedUser = authResult != null ? authResult.getUser() : null;
             if (authenticatedUser == null) {
                 return errorResponse(Response.Status.UNAUTHORIZED, "Not authenticated");
             }
@@ -110,7 +115,8 @@ public class DeviceAuthResourceProvider implements RealmResourceProvider {
             }
             AssuranceLevel assuranceLevel = AssuranceLevel.fromString(request.acr);
 
-            DeviceService deviceService = new DeviceService(deviceStorage, session);
+            DeviceService deviceService = new DeviceService(
+                    deviceStorage, session, new KeycloakEventDeviceRebindingNotifier(session));
             Device device = deviceService.registerDevice(
                     authenticatedUser.getId(),
                     request.deviceId,
@@ -123,6 +129,14 @@ public class DeviceAuthResourceProvider implements RealmResourceProvider {
                     attestationStatement,
                     assuranceLevel
             );
+
+            // Doc section 4.3: "One active key per account. Registering a new key
+            // invalidates the previous one." bindDevice() already revoked the previous
+            // device's *record*; this kills its live Keycloak session too, so the
+            // previous device is signed out immediately rather than only failing on its
+            // next device-key operation. The session behind *this* request (the one that
+            // just authenticated the register call) is deliberately kept.
+            revokeOtherSessions(authenticatedUser, authResult.getSession());
 
             logger.infov("Device registered via REST, attestationLevel={0}, assuranceLevel={1}",
                     attestationLevel, assuranceLevel);
@@ -150,7 +164,8 @@ public class DeviceAuthResourceProvider implements RealmResourceProvider {
                 return errorResponse(Response.Status.BAD_REQUEST, "Device ID is required");
             }
 
-            UserModel authenticatedUser = authenticateBearer();
+            AuthenticationManager.AuthResult authResult = authenticateBearer();
+            UserModel authenticatedUser = authResult != null ? authResult.getUser() : null;
             if (authenticatedUser == null) {
                 return errorResponse(Response.Status.UNAUTHORIZED, "Not authenticated");
             }
@@ -172,6 +187,39 @@ public class DeviceAuthResourceProvider implements RealmResourceProvider {
             return errorResponse(Response.Status.CONFLICT, e.getMessage());
         } catch (Exception e) {
             logger.error("Error revoking device", e);
+            return errorResponse(Response.Status.INTERNAL_SERVER_ERROR, "Internal server error");
+        }
+    }
+
+    /**
+     * User-initiated logout: invalidates every live session/token for the calling
+     * user (doc Tokens/Logout requirement - "invalidate all active sessions and
+     * tokens on user-initiated logout"; a reused access token then 401s once it
+     * hits its own expiry, since revoking the session kills refresh but not an
+     * already-issued JWT outright - see the session's own discussion of this).
+     * Deliberately does NOT touch the device record/key, unlike /revoke - logout
+     * ends the session, not the device's registration, so the citizen can still
+     * sign back in via Flow B/PIN without redoing OTP.
+     */
+    @POST
+    @Path("/logout")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response logout() {
+        try {
+            AuthenticationManager.AuthResult authResult = authenticateBearer();
+            UserModel authenticatedUser = authResult != null ? authResult.getUser() : null;
+            if (authenticatedUser == null) {
+                return errorResponse(Response.Status.UNAUTHORIZED, "Not authenticated");
+            }
+
+            int revoked = revokeSessions(authenticatedUser, s -> true);
+            logger.infov("User-initiated logout via REST, userId={0}, sessionsRevoked={1}",
+                    authenticatedUser.getId(), revoked);
+
+            return Response.ok(Map.of("status", "logged_out", "sessionsRevoked", revoked)).build();
+
+        } catch (Exception e) {
+            logger.error("Error during logout", e);
             return errorResponse(Response.Status.INTERNAL_SERVER_ERROR, "Internal server error");
         }
     }
@@ -234,16 +282,52 @@ public class DeviceAuthResourceProvider implements RealmResourceProvider {
      * /revoke here relied on session.getContext().getUser(), which nothing ever
      * populates for a custom realm resource, so those endpoints always returned
      * "Not authenticated" regardless of a valid token. This explicitly validates
-     * the Authorization: Bearer header against the realm.
+     * the Authorization: Bearer header against the realm. Returns the full AuthResult
+     * (not just the user) so callers that need the originating session - e.g.
+     * registerDevice()'s re-bind session revocation - can get it without a second
+     * Bearer-token round trip.
      */
-    private UserModel authenticateBearer() {
-        AuthenticationManager.AuthResult authResult = new AppAuthManager.BearerTokenAuthenticator(session)
+    private AuthenticationManager.AuthResult authenticateBearer() {
+        return new AppAuthManager.BearerTokenAuthenticator(session)
                 .setRealm(session.getContext().getRealm())
                 .setUriInfo(session.getContext().getUri())
                 .setConnection(session.getContext().getConnection())
                 .setHeaders(session.getContext().getRequestHeaders())
                 .authenticate();
-        return authResult != null ? authResult.getUser() : null;
+    }
+
+    /**
+     * Kills every other live Keycloak session for [user] - the ones behind device A's
+     * still-valid access/refresh tokens - keeping only [currentSession] (the one that
+     * authenticated this very register call). Access tokens already issued to the
+     * revoked sessions remain valid until they naturally expire (short-lived by realm
+     * config), but their refresh tokens die here, so device A cannot silently renew.
+     */
+    private void revokeOtherSessions(UserModel user, UserSessionModel currentSession) {
+        String currentSessionId = currentSession != null ? currentSession.getId() : null;
+        int revoked = revokeSessions(user, s -> currentSessionId == null || !s.getId().equals(currentSessionId));
+        if (revoked > 0) {
+            logger.infov("Revoked {0} other session(s) for userId={1} as part of device re-binding",
+                    revoked, user.getId());
+        }
+    }
+
+    /**
+     * Removes every live session for [user] matching [shouldRevoke]. Shared by
+     * revokeOtherSessions() (re-bind: keep the just-authenticated session, kill
+     * the rest) and logout() (kill everything, no exception) - same underlying
+     * mechanism, different scope.
+     */
+    private int revokeSessions(UserModel user, java.util.function.Predicate<UserSessionModel> shouldRevoke) {
+        RealmModel realm = session.getContext().getRealm();
+        List<UserSessionModel> toRevoke = session.sessions()
+                .getUserSessionsStream(realm, user)
+                .filter(shouldRevoke)
+                .collect(Collectors.toList());
+        for (UserSessionModel s : toRevoke) {
+            session.sessions().removeUserSession(realm, s);
+        }
+        return toRevoke.size();
     }
 
     private Response errorResponse(Response.Status status, String message) {

@@ -176,20 +176,34 @@
             });
         }
 
-        // Resend has no backend wiring yet (OTP delivery is dev-only, see
-        // README known limitations) - this is a cosmetic cooldown only.
+        // Resend actually regenerates the dev OTP server-side now
+        // (DevelopmentOtpAuthenticator.handleResend) - clicking it submits this
+        // same form with resendOtp=true, which is a full page reload, not AJAX.
+        // Real delivery is still dev-only (see README known limitations); only
+        // the on-page devOtpHint shows the new code.
+        //
+        // Incremental cooldown: 30s after the 1st resend, 60s after the 2nd, 90s
+        // after the 3rd, and so on - mirrors the (otherwise unused) SuperApp
+        // native OTP screen's _resendCooldownStepSeconds * _resendCount logic.
+        // Since each resend reloads the page, resendCount is read from the
+        // server-rendered data-resend-count attribute (backed by an auth-session
+        // note, so it survives the reload) rather than kept in JS memory, and the
+        // cooldown resumes immediately on load if a resend just happened.
         var resendBtn = document.getElementById("otpResend");
-        if (resendBtn) {
+        var resendHiddenField = document.getElementById("resendOtp");
+        if (resendBtn && resendHiddenField) {
             var baseLabel = resendBtn.textContent;
+            var resendCooldownStepSeconds = 30;
+            var resendCount = parseInt(resendBtn.getAttribute("data-resend-count"), 10) || 0;
             var secondsLeft = 0;
             var timer = null;
 
-            resendBtn.addEventListener("click", function () {
-                if (secondsLeft > 0) {
-                    return;
-                }
-                secondsLeft = 30;
+            function startCooldown() {
+                secondsLeft = resendCooldownStepSeconds * resendCount;
                 resendBtn.disabled = true;
+                if (timer) {
+                    window.clearInterval(timer);
+                }
                 timer = window.setInterval(function () {
                     secondsLeft -= 1;
                     if (secondsLeft <= 0) {
@@ -200,7 +214,20 @@
                         resendBtn.textContent = baseLabel + " (" + secondsLeft + "s)";
                     }
                 }, 1000);
+            }
+
+            resendBtn.addEventListener("click", function () {
+                if (secondsLeft > 0) {
+                    return;
+                }
+                resendHiddenField.value = "true";
+                resendBtn.disabled = true;
+                form.requestSubmit ? form.requestSubmit() : form.submit();
             });
+
+            if (resendCount > 0) {
+                startCooldown();
+            }
         }
 
         if (boxes[0]) {
